@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/tarm/serial"
@@ -160,10 +161,7 @@ func (s *LCDMDispenser) Reset() error {
 }
 
 func (s *LCDMDispenser) UpperDispense(count byte) (StatusCode, CashboxStatusCode, byte, byte, error) {
-	high := count / 10
-	low := count - high
-
-	sendRequest(s, 0x45, []byte{high, low})
+	sendRequest(s, 0x45, []byte(fmt.Sprintf("%v", count)))
 
 	response, err := readResponse(s)
 
@@ -171,14 +169,16 @@ func (s *LCDMDispenser) UpperDispense(count byte) (StatusCode, CashboxStatusCode
 		return 0, 0, 0, 0, err
 	}
 
-	return StatusCode(response[4]), CashboxStatusCode(response[5]), response[0]*10 + response[1], response[2]*10 + response[3], nil
+	val, _ := strconv.ParseUint(string(response[0:2]), 10, 8)
+	checkSensor := byte(val)
+	val, _ = strconv.ParseUint(string(response[2:34]), 10, 8)
+	exitSensor := byte(val)
+
+	return StatusCode(response[4]), CashboxStatusCode(response[5]), checkSensor, exitSensor, nil
 }
 
 func (s *LCDMDispenser) LowerDispense(count byte) (StatusCode, CashboxStatusCode, byte, byte, error) {
-	high := count / 10
-	low := count - high
-
-	sendRequest(s, 0x55, []byte{high, low})
+	sendRequest(s, 0x55, []byte(fmt.Sprintf("%v", count)))
 
 	response, err := readResponse(s)
 
@@ -186,17 +186,16 @@ func (s *LCDMDispenser) LowerDispense(count byte) (StatusCode, CashboxStatusCode
 		return 0, 0, 0, 0, err
 	}
 
-	return StatusCode(response[4]), CashboxStatusCode(response[5]), response[0]*10 + response[1], response[2]*10 + response[3], nil
+	val, _ := strconv.ParseUint(string(response[0:2]), 10, 8)
+	checkSensor := byte(val)
+	val, _ = strconv.ParseUint(string(response[2:34]), 10, 8)
+	exitSensor := byte(val)
+
+	return StatusCode(response[4]), CashboxStatusCode(response[5]), checkSensor, exitSensor, nil
 }
 
 func (s *LCDMDispenser) Dispense(upperCount byte, lowerCount byte) (StatusCode, CashboxStatusCode, byte, byte, byte, byte, error) {
-	upperHigh := upperCount / 10
-	upperLow := upperCount - upperHigh
-
-	lowerHigh := lowerCount / 10
-	lowerLow := lowerHigh - upperHigh
-
-	sendRequest(s, 0x55, []byte{upperHigh, upperLow, lowerHigh, lowerLow})
+	sendRequest(s, 0x55, []byte(fmt.Sprintf("%v%v", upperCount, lowerCount)))
 
 	response, err := readResponse(s)
 
@@ -204,7 +203,17 @@ func (s *LCDMDispenser) Dispense(upperCount byte, lowerCount byte) (StatusCode, 
 		return 0, 0, 0, 0, 0, 0, err
 	}
 
-	return StatusCode(response[8]), CashboxStatusCode(response[9]), response[0]*10 + response[1], response[2]*10 + response[3], response[4]*10 + response[5], response[6]*10 + response[7], nil
+	val, _ := strconv.ParseUint(string(response[0:2]), 10, 8)
+	upperCheckSensor := byte(val)
+	val, _ = strconv.ParseUint(string(response[2:34]), 10, 8)
+	upperExitSensor := byte(val)
+
+	val, _ = strconv.ParseUint(string(response[0:2]), 10, 8)
+	lowerCheckSensor := byte(val)
+	val, _ = strconv.ParseUint(string(response[2:34]), 10, 8)
+	lowerExitSensor := byte(val)
+
+	return StatusCode(response[8]), CashboxStatusCode(response[9]), upperCheckSensor, upperExitSensor, lowerCheckSensor, lowerExitSensor, nil
 }
 
 func (s *LCDMDispenser) RomVersion() (string, string, error) {
