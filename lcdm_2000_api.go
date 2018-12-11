@@ -246,16 +246,6 @@ func readResponse(v *LCDMDispenser) ([]byte, error) {
 
 	v.Ack()
 
-	resp, err = readRespCode(v)
-
-	if err != nil {
-		return nil, err
-	}
-
-	if resp != EotResponse {
-		return nil, errors.New("Response not EOT")
-	}
-
 	time.Sleep(time.Millisecond * 200)
 
 	return data, nil

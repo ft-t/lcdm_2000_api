@@ -14,8 +14,10 @@ func TestConnection(t *testing.T) {
 		fmt.Println(er)
 		return
 	}
+//	er = c.Reset()
+	s,e,r,r1,r2 := c.UpperDispense(1)
 
-	er = c.Reset()
+	fmt.Println(s,e,r,r1,r2)
 
 	if er != nil {
 		fmt.Println(er)
