@@ -82,6 +82,7 @@ type LCDMDispenser struct {
 	config  *serial.Config
 	port    *serial.Port
 	logging bool
+	open    bool
 }
 
 type SensorStatus struct {
@@ -116,16 +117,42 @@ func NewConnection(path string, baud Baud, logging bool) (LCDMDispenser, error) 
 	res.config = c
 	res.port = o
 	res.logging = logging
+	res.open = true
 
 	return res, nil
 }
 
+func (s *LCDMDispenser) Open() error {
+	p, err := serial.OpenPort(s.config)
+
+	if err != nil {
+		return err
+	}
+
+	s.port = p
+	s.open = true
+
+	return nil
+}
+
+func (s *LCDMDispenser) Close() error {
+	err := s.port.Close()
+	s.open = false
+
+	return err
+}
+
 func (s *LCDMDispenser) Status() (StatusCode, SensorStatus, error) {
-	sendRequest(s, 0x46, []byte{})
+	status := SensorStatus{}
+
+	err := sendRequest(s, 0x46, []byte{})
+
+	if err != nil {
+		return 0, status, err
+	}
 
 	response, err := readResponse(s)
 
-	status := SensorStatus{}
 	if err != nil {
 		return 0, status, err
 	}
@@ -149,9 +176,13 @@ func (s *LCDMDispenser) Status() (StatusCode, SensorStatus, error) {
 }
 
 func (s *LCDMDispenser) Reset() error {
-	sendRequest(s, 0x44, []byte{})
+	err := sendRequest(s, 0x44, []byte{})
 
-	_, err := readResponse(s)
+	if err != nil {
+		return err
+	}
+
+	_, err = readResponse(s)
 
 	if err != nil {
 		return err
@@ -161,7 +192,11 @@ func (s *LCDMDispenser) Reset() error {
 }
 
 func (s *LCDMDispenser) UpperDispense(count byte) (StatusCode, CashboxStatusCode, byte, byte, error) {
-	sendRequest(s, 0x45, []byte(fmt.Sprintf("%v", count)))
+	err := sendRequest(s, 0x45, []byte(fmt.Sprintf("%02d", count)))
+
+	if err != nil {
+		return 0, 0, 0, 0, err
+	}
 
 	response, err := readResponse(s)
 
@@ -178,7 +213,11 @@ func (s *LCDMDispenser) UpperDispense(count byte) (StatusCode, CashboxStatusCode
 }
 
 func (s *LCDMDispenser) LowerDispense(count byte) (StatusCode, CashboxStatusCode, byte, byte, error) {
-	sendRequest(s, 0x55, []byte(fmt.Sprintf("%v", count)))
+	err := sendRequest(s, 0x55, []byte(fmt.Sprintf("%02d", count)))
+
+	if err != nil {
+		return 0, 0, 0, 0, err
+	}
 
 	response, err := readResponse(s)
 
@@ -195,7 +234,11 @@ func (s *LCDMDispenser) LowerDispense(count byte) (StatusCode, CashboxStatusCode
 }
 
 func (s *LCDMDispenser) Dispense(upperCount byte, lowerCount byte) (StatusCode, CashboxStatusCode, byte, byte, byte, byte, error) {
-	sendRequest(s, 0x55, []byte(fmt.Sprintf("%v%v", upperCount, lowerCount)))
+	err := sendRequest(s, 0x55, []byte(fmt.Sprintf("%02d%02d", upperCount, lowerCount)))
+
+	if err != nil {
+		return 0, 0, 0, 0, 0, 0, err
+	}
 
 	response, err := readResponse(s)
 
@@ -217,7 +260,11 @@ func (s *LCDMDispenser) Dispense(upperCount byte, lowerCount byte) (StatusCode, 
 }
 
 func (s *LCDMDispenser) RomVersion() (string, string, error) {
-	sendRequest(s, 0x47, []byte{})
+	err := sendRequest(s, 0x47, []byte{})
+
+	if err != nil {
+		return "", "", err
+	}
 
 	response, err := readResponse(s)
 
@@ -379,7 +426,11 @@ func readRespData(v *LCDMDispenser) ([]byte, error) {
 	return buf, nil
 }
 
-func sendRequest(v *LCDMDispenser, commandCode byte, bytesData ...[]byte) {
+func sendRequest(v *LCDMDispenser, commandCode byte, bytesData ...[]byte) error {
+	if !v.open {
+		return errors.New("serial port is closed")
+	}
+
 	buf := new(bytes.Buffer)
 
 	length := 6
@@ -407,7 +458,9 @@ func sendRequest(v *LCDMDispenser, commandCode byte, bytesData ...[]byte) {
 		fmt.Printf("-> %X\n", buf.Bytes())
 	}
 
-	_, _ = v.port.Write(buf.Bytes())
+	_, err := v.port.Write(buf.Bytes())
+
+	return err
 }
 
 func getChecksum(data []byte) byte {
