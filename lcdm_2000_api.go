@@ -123,6 +123,10 @@ func NewConnection(path string, baud Baud, logging bool) (LCDMDispenser, error) 
 }
 
 func (s *LCDMDispenser) Open() error {
+	if s.port == nil || !s.open {
+		return errors.New("port already opened")
+	}
+
 	p, err := serial.OpenPort(s.config)
 
 	if err != nil {
@@ -136,6 +140,10 @@ func (s *LCDMDispenser) Open() error {
 }
 
 func (s *LCDMDispenser) Close() error {
+	if s.port == nil || !s.open {
+		return errors.New("port not opened")
+	}
+
 	err := s.port.Close()
 	s.open = false
 
