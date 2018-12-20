@@ -347,21 +347,21 @@ func readRespCode(v *LCDMDispenser) (ResponseType, error) {
 
 	if buf[0] == 0x06 {
 		if v.logging {
-			fmt.Printf("<- ACK\n")
+			fmt.Printf("lcdm_2000[%v]: <- ACK\n", v.config.Name)
 		}
 		return AckResponse, nil // TODO Ack
 	}
 
 	if buf[0] == 0x15 {
 		if v.logging {
-			fmt.Printf("<- NAK\n")
+			fmt.Printf("lcdm_2000[%v]: <- NAK\n", v.config.Name)
 		}
 		return NackResponse, nil
 	}
 
 	if buf[0] == 0x04 {
 		if v.logging {
-			fmt.Printf("<- EOT\n")
+			fmt.Printf("lcdm_2000[%v]: <- EOT\n", v.config.Name)
 		}
 		return EotResponse, nil
 	}
@@ -407,7 +407,7 @@ func readRespData(v *LCDMDispenser) ([]byte, error) {
 	}
 
 	if buf[0] != ResponseStart || buf[1] != CommunicationIdentify {
-		fmt.Printf("<- %X\n", buf)
+		fmt.Printf("lcdm_2000[%v]: <- %X\n", v.config.Name, buf)
 		return nil, fmt.Errorf("Response format invalid")
 	}
 
@@ -428,7 +428,7 @@ func readRespData(v *LCDMDispenser) ([]byte, error) {
 	buf = buf[4 : len(buf)-1]
 
 	if v.logging {
-		fmt.Printf("<- %X\n", buf)
+		fmt.Printf("lcdm_2000[%v]: <- %X\n", v.config.Name, buf)
 	}
 
 	return buf, nil
@@ -463,7 +463,7 @@ func sendRequest(v *LCDMDispenser, commandCode byte, bytesData ...[]byte) error 
 	_ = binary.Write(buf, binary.LittleEndian, crc)
 
 	if v.logging {
-		fmt.Printf("-> %X\n", buf.Bytes())
+		fmt.Printf("lcdm_2000[%v]: -> %X\n", v.config.Name, buf.Bytes())
 	}
 
 	_, err := v.port.Write(buf.Bytes())
