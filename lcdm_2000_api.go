@@ -83,6 +83,7 @@ type LCDMDispenser struct {
 	port    *serial.Port
 	logging bool
 	open    bool
+	timeout time.Duration
 }
 
 type SensorStatus struct {
@@ -102,8 +103,22 @@ type SensorStatus struct {
 	RejectTray     bool
 }
 
-func NewConnection(path string, baud Baud, logging bool) (LCDMDispenser, error) {
-	c := &serial.Config{Name: path, Baud: int(baud), ReadTimeout: 5 * time.Second, Parity: serial.ParityNone, StopBits: serial.Stop1,
+type response struct {
+	data ResponseType
+	err  error
+}
+
+type responseData struct {
+	data []byte
+	err  error
+}
+
+func NewConnection(path string, baud Baud, logging bool, timeout time.Duration) (LCDMDispenser, error) {
+	if timeout == 0 {
+		timeout = 3 * time.Second
+	}
+
+	c := &serial.Config{Name: path, Baud: int(baud), ReadTimeout: timeout, Parity: serial.ParityNone, StopBits: serial.Stop1,
 		Size: 8}
 
 	o, err := serial.OpenPort(c)
@@ -118,6 +133,7 @@ func NewConnection(path string, baud Baud, logging bool) (LCDMDispenser, error) 
 	res.port = o
 	res.logging = logging
 	res.open = true
+	res.timeout = timeout
 
 	return res, nil
 }
@@ -291,8 +307,20 @@ func (s *LCDMDispenser) Nack() {
 	_, _ = s.port.Write([]byte{0x15})
 }
 
+func timeout(timeout time.Duration, r chan response) {
+	time.Sleep(timeout)
+
+	r <- response{err: errors.New("timeout")}
+}
+
+func timeoutData(timeout time.Duration, r chan responseData) {
+	time.Sleep(timeout)
+
+	r <- responseData{err: errors.New("timeout")}
+}
+
 func readResponse(v *LCDMDispenser) ([]byte, error) {
-	resp, err := readRespCode(v)
+	resp, err := readRespCodeWithTimeout(v)
 
 	if err != nil {
 		return nil, err
@@ -302,7 +330,7 @@ func readResponse(v *LCDMDispenser) ([]byte, error) {
 		return nil, errors.New("Response not ACK")
 	}
 
-	data, err := readRespData(v)
+	data, err := readRespDataWithTimeout(v)
 
 	if err != nil {
 		return nil, err
@@ -313,6 +341,20 @@ func readResponse(v *LCDMDispenser) ([]byte, error) {
 	time.Sleep(time.Millisecond * 200)
 
 	return data, nil
+}
+
+func readRespCodeWithTimeout(s *LCDMDispenser) (ResponseType, error) {
+	inner := make(chan response)
+
+	go func() {
+		i, v := readRespCode(s)
+		inner <- response{data: i, err: v}
+	}()
+	go timeout(s.timeout, inner)
+
+	v := <-inner
+
+	return v.data, v.err
 }
 
 func readRespCode(v *LCDMDispenser) (ResponseType, error) {
@@ -367,6 +409,20 @@ func readRespCode(v *LCDMDispenser) (ResponseType, error) {
 	}
 
 	return ErrorResponse, nil
+}
+
+func readRespDataWithTimeout(s *LCDMDispenser) ([]byte, error) {
+	inner := make(chan responseData)
+
+	go func() {
+		i, v := readRespData(s)
+		inner <- responseData{data: i, err: v}
+	}()
+	go timeoutData(s.timeout, inner)
+
+	v := <-inner
+
+	return v.data, v.err
 }
 
 func readRespData(v *LCDMDispenser) ([]byte, error) {

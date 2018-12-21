@@ -3,12 +3,13 @@ package lcdm_2000_api_test
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	api "lcdm_2000_api"
 )
 
 func TestConnection(t *testing.T) {
-	c, er := api.NewConnection("COM4", api.Baud9600, true)
+	c, er := api.NewConnection("COM4", api.Baud9600, true, 3 * time.Second)
 
 	if er != nil {
 		fmt.Println(er)
