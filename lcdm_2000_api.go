@@ -230,7 +230,7 @@ func (s *LCDMDispenser) UpperDispense(count byte) (StatusCode, CashboxStatusCode
 
 	val, _ := strconv.ParseUint(string(response[0:2]), 10, 8)
 	checkSensor := byte(val)
-	val, _ = strconv.ParseUint(string(response[2:34]), 10, 8)
+	val, _ = strconv.ParseUint(string(response[2:4]), 10, 8)
 	exitSensor := byte(val)
 
 	return StatusCode(response[4]), CashboxStatusCode(response[5]), checkSensor, exitSensor, nil
@@ -251,7 +251,7 @@ func (s *LCDMDispenser) LowerDispense(count byte) (StatusCode, CashboxStatusCode
 
 	val, _ := strconv.ParseUint(string(response[0:2]), 10, 8)
 	checkSensor := byte(val)
-	val, _ = strconv.ParseUint(string(response[2:34]), 10, 8)
+	val, _ = strconv.ParseUint(string(response[2:4]), 10, 8)
 	exitSensor := byte(val)
 
 	return StatusCode(response[4]), CashboxStatusCode(response[5]), checkSensor, exitSensor, nil
@@ -272,12 +272,12 @@ func (s *LCDMDispenser) Dispense(upperCount byte, lowerCount byte) (StatusCode, 
 
 	val, _ := strconv.ParseUint(string(response[0:2]), 10, 8)
 	upperCheckSensor := byte(val)
-	val, _ = strconv.ParseUint(string(response[2:34]), 10, 8)
+	val, _ = strconv.ParseUint(string(response[2:4]), 10, 8)
 	upperExitSensor := byte(val)
 
 	val, _ = strconv.ParseUint(string(response[0:2]), 10, 8)
 	lowerCheckSensor := byte(val)
-	val, _ = strconv.ParseUint(string(response[2:34]), 10, 8)
+	val, _ = strconv.ParseUint(string(response[2:4]), 10, 8)
 	lowerExitSensor := byte(val)
 
 	return StatusCode(response[8]), CashboxStatusCode(response[9]), upperCheckSensor, upperExitSensor, lowerCheckSensor, lowerExitSensor, nil
