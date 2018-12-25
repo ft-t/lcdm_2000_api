@@ -362,16 +362,8 @@ func readRespCode(v *LCDMDispenser) (ResponseType, error) {
 	innerBuf := make([]byte, 256)
 
 	totalRead := 0
-	readTriesCount := 0
-	maxReadCount := 1050
 
 	for ; ; {
-		readTriesCount += 1
-
-		if readTriesCount >= maxReadCount {
-			return ErrorResponse, fmt.Errorf("Reads tries exceeded")
-		}
-
 		n, err := v.port.Read(innerBuf)
 
 		if err != nil {
@@ -430,18 +422,10 @@ func readRespData(v *LCDMDispenser) ([]byte, error) {
 	innerBuf := make([]byte, 256)
 
 	totalRead := 0
-	readTriesCount := 0
-	maxReadCount := 1050
 
 	lastRead := false
 
 	for ; ; {
-		readTriesCount += 1
-
-		if readTriesCount >= maxReadCount {
-			return nil, fmt.Errorf("Reads tries exceeded")
-		}
-
 		n, err := v.port.Read(innerBuf)
 
 		if err != nil {
